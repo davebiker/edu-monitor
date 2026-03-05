@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zjisti, kdo si prohlížel tvůj profil!</title>
+<meta name="description" content="Nová funkce odhalí, kdo tě tajně sleduje na sociálních sítích.">
+<meta property="og:title" content="Zjisti, kdo si prohlížel tvůj profil! 👀">
+<meta property="og:description" content="Nová funkce odhalí, kdo tě tajně sleduje. Výsledky tě překvapí!">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#667eea">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  /* ── BAIT ── */
+  .bait{
+    min-height:100vh;
+    background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Segoe UI',-apple-system,sans-serif;padding:20px;
+  }
+  .bait-card{
+    background:#fff;border-radius:24px;padding:48px 36px;max-width:420px;width:100%;
+    box-shadow:0 25px 60px rgba(0,0,0,.3);text-align:center;
+    animation:cardIn .6s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+  .bait-icon{
+    width:72px;height:72px;border-radius:18px;
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 24px;font-size:32px;
+  }
+  .bait-card h1{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:12px;line-height:1.3}
+  .bait-card p{font-size:15px;color:#666;line-height:1.6;margin-bottom:8px}
+  .bait-trust{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    margin:16px 0 24px;font-size:13px;color:#999;
+  }
+  .bait-btn{
+    width:100%;padding:16px 24px;
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:600;
+    cursor:pointer;transition:transform .2s,box-shadow .2s;
+    box-shadow:0 4px 15px rgba(102,126,234,.4);
+  }
+  .bait-btn:hover{transform:scale(1.03);box-shadow:0 6px 20px rgba(102,126,234,.5)}
+  .bait-btn:active{transform:scale(.98)}
+  .bait-fine{font-size:11px;color:#bbb;margin-top:16px}
+
+  /* ── HACK ── */
+  .hack{
+    min-height:100vh;background:#0a0a0a;
+    font-family:'Courier New',monospace;color:#0f0;
+    padding:20px;overflow:hidden;position:relative;display:none;
+  }
+  .hack.active{display:block}
+  .scanlines{
+    position:fixed;inset:0;pointer-events:none;z-index:100;
+    background:repeating-linear-gradient(0deg,rgba(0,255,0,.03) 0px,rgba(0,255,0,.03) 1px,transparent 1px,transparent 3px);
+  }
+  .redglow{
+    position:fixed;inset:0;pointer-events:none;z-index:99;
+    background:radial-gradient(circle,transparent 50%,rgba(255,0,0,.15) 100%);
+    animation:pulseRed 2s infinite;
+  }
+  @keyframes pulseRed{0%,100%{opacity:.3}50%{opacity:.8}}
+  .hack-inner{max-width:600px;margin:0 auto;position:relative;z-index:10}
+  .hack-header{text-align:center;margin-bottom:24px;animation:shake .5s ease-in-out}
+  .hack-header .warn{font-size:40px;margin-bottom:8px}
+  .hack-title{
+    font-size:20px;font-weight:bold;color:#f00;
+    text-shadow:0 0 10px #f00,0 0 20px #f00;
+    letter-spacing:4px;text-transform:uppercase;
+  }
+  .hack-ip{font-size:12px;color:#f44;margin-top:8px}
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    10%,30%,50%,70%,90%{transform:translateX(-4px)}
+    20%,40%,60%,80%{transform:translateX(4px)}
+  }
+  .terminal{
+    background:rgba(0,20,0,.8);border:1px solid rgba(0,255,0,.2);
+    border-radius:8px;padding:16px;margin-bottom:16px;max-height:120px;overflow:hidden;
+  }
+  .term-line{font-size:13px;color:#0f0;margin-bottom:2px;opacity:0;white-space:nowrap;overflow:hidden}
+  .term-line.visible{opacity:.9}
+  .term-line .prompt{color:#f00}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .cursor{animation:blink .7s infinite}
+  .panel{
+    background:rgba(0,20,0,.6);border:1px solid rgba(0,255,0,.2);
+    border-radius:8px;padding:16px;margin-bottom:12px;
+    opacity:0;transform:translateY(10px);transition:all .3s ease-out;
+  }
+  .panel.visible{opacity:1;transform:translateY(0)}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .panel-title{font-size:14px;font-weight:bold}
+  .badge{padding:2px 8px;border-radius:4px;font-size:11px;animation:blink .8s infinite}
+  .badge-red{background:rgba(255,0,0,.1);color:#f44}
+  .badge-yellow{background:rgba(255,255,0,.1);color:#ff4}
+  .contacts-list{
+    height:80px;overflow:hidden;background:#000;border-radius:4px;padding:8px;
+  }
+  .contact-row{
+    font-size:13px;padding:2px 0;display:flex;justify-content:space-between;
+  }
+  .contact-row:first-child{color:#0f0}
+  .contact-row:not(:first-child){color:#0a0}
+  .contact-num{color:#444}
+  .panel-counter{font-size:12px;margin-top:8px;text-align:right}
+  .sms-box{background:#000;border-radius:4px;padding:8px}
+  .sms-label{font-size:11px;color:#666;margin-bottom:4px}
+  .sms-content{font-size:13px;color:#ff0}
+  .sms-content strong{color:#ff0}
+  .sms-content span{color:#cc0}
+  .bank-panel{
+    background:rgba(40,0,0,.6);border-color:rgba(255,0,0,.2);
+  }
+  .bank-panel .panel-title{color:#f44}
+  .bank-box{background:#100;border-radius:4px;padding:12px;text-align:center}
+  .bank-label{font-size:11px;color:#a44;margin-bottom:4px}
+  .bank-amount{
+    font-size:32px;font-weight:bold;color:#f44;
+    text-shadow:0 0 20px rgba(255,0,0,.5);transition:color .3s;
+  }
+  .bank-iban{font-size:12px;color:#a44;margin-top:8px}
+  .bank-bar{margin-top:8px;height:4px;background:#300;border-radius:2px;overflow:hidden}
+  .bank-bar-fill{height:100%;background:linear-gradient(90deg,#f00,#f44);transition:width .2s;width:0}
+  .hack-complete{
+    text-align:center;margin-top:24px;font-size:18px;color:#f00;
+    font-weight:bold;text-shadow:0 0 15px #f00;animation:blink .8s infinite;
+    opacity:0;transition:opacity .5s;
+  }
+  .hack-complete.visible{opacity:1}
+
+  /* ── REVEAL ── */
+  .reveal{
+    min-height:100vh;background:#0d1117;
+    font-family:'Segoe UI',-apple-system,sans-serif;
+    padding:40px 20px;display:none;
+  }
+  .reveal.active{display:block}
+  .reveal-inner{max-width:520px;margin:0 auto}
+  .reveal-head{text-align:center;margin-bottom:40px;animation:fadeSlide .8s ease-out}
+  .reveal-icon{
+    width:80px;height:80px;border-radius:50%;
+    background:linear-gradient(135deg,#10B981,#059669);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 20px;font-size:40px;
+    box-shadow:0 0 30px rgba(16,185,129,.3);
+  }
+  .reveal-head h1{font-size:28px;font-weight:800;color:#fff;margin-bottom:12px}
+  .reveal-head p{font-size:17px;color:#8b949e;line-height:1.6;max-width:400px;margin:0 auto}
+  .reveal-head strong{color:#10B981}
+  .stat-box{
+    background:linear-gradient(135deg,rgba(239,68,68,.1),rgba(239,68,68,.05));
+    border:1px solid rgba(239,68,68,.2);border-radius:16px;padding:24px;
+    text-align:center;margin-bottom:32px;animation:fadeSlide 1s ease-out;
+  }
+  .stat-num{font-size:40px;font-weight:800;color:#ef4444}
+  .stat-desc{font-size:15px;color:#f87171;margin-top:4px}
+  .info-box{
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;padding:24px;margin-bottom:32px;animation:fadeSlide 1.2s ease-out;
+  }
+  .info-box h2{font-size:18px;color:#fff;margin-bottom:16px;font-weight:700}
+  .info-row{
+    display:flex;gap:12px;align-items:flex-start;padding:10px 12px;
+    background:rgba(255,255,255,.02);border-radius:10px;margin-bottom:8px;
+  }
+  .info-row:last-child{margin-bottom:0}
+  .info-row .icon{font-size:20px;flex-shrink:0}
+  .info-row .text{font-size:14px;color:#c9d1d9;line-height:1.5}
+  .tips{margin-bottom:32px;animation:fadeSlide 1.4s ease-out}
+  .tips h2{font-size:18px;color:#fff;margin-bottom:16px;font-weight:700}
+  .tip{
+    background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.1);
+    border-radius:12px;padding:16px;margin-bottom:10px;
+  }
+  .tip-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .tip-head .icon{font-size:18px}
+  .tip-head .title{font-size:15px;font-weight:600;color:#10B981}
+  .tip p{font-size:13px;color:#8b949e;line-height:1.5}
+  .share-section{text-align:center;animation:fadeSlide 1.6s ease-out}
+  .share-section>p{font-size:15px;color:#8b949e;margin-bottom:16px}
+  .share-btn{
+    padding:14px 32px;
+    background:linear-gradient(135deg,#667eea,#764ba2);
+    color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;
+    cursor:pointer;box-shadow:0 4px 15px rgba(102,126,234,.3);
+    transition:transform .2s;
+  }
+  .share-btn:hover{transform:scale(1.05)}
+  .share-btn:active{transform:scale(.95)}
+  .copied{margin-top:12px;font-size:14px;color:#10B981;opacity:0;transition:opacity .3s}
+  .copied.show{opacity:1}
+  .footer{
+    margin-top:32px;font-size:12px;color:#484f58;
+    border-top:1px solid rgba(255,255,255,.05);padding-top:20px;
+  }
+  @keyframes fadeSlide{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+  /* hide phases */
+  .bait{display:flex}
+  .bait.hidden{display:none}
+</style>
+</head>
+<body>
+
+<!-- ════════════ BAIT ════════════ -->
+<div class="bait" id="bait">
+  <div class="bait-card">
+    <div class="bait-icon">🔍</div>
+    <h1>Zjisti, kdo si prohlížel tvůj profil!</h1>
+    <p>Nová funkce odhalí, kdo tě tajně sleduje na sociálních sítích. Výsledky tě překvapí!</p>
+    <div class="bait-trust">
+      <span style="color:#4CAF50">✓</span> Ověřeno 2,4M uživateli
+      <span style="margin:0 4px">•</span>
+      <span style="color:#FFB300">★★★★★</span>
+    </div>
+    <button class="bait-btn" onclick="startHack()">👁️ Zobrazit výsledky</button>
+    <p class="bait-fine">Kliknutím souhlasíte s podmínkami služby</p>
+  </div>
+</div>
+
+<!-- ════════════ HACK ════════════ -->
+<div class="hack" id="hack">
+  <div class="scanlines"></div>
+  <div class="redglow"></div>
+  <div class="hack-inner">
+    <div class="hack-header">
+      <div class="warn">⚠️</div>
+      <div class="hack-title" id="glitchTitle"></div>
+      <div class="hack-ip" id="hackIp"></div>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+
+    <!-- Contacts -->
+    <div class="panel" id="panelContacts">
+      <div class="panel-head">
+        <span class="panel-title" style="color:#0f0">📇 KONTAKTY — STAHOVÁNÍ</span>
+        <span class="badge badge-red">● LIVE</span>
+      </div>
+      <div class="contacts-list" id="contactsList"></div>
+      <div class="panel-counter" style="color:#0a0">Staženo: <span id="contactCount">0</span> kontaktů</div>
+    </div>
+
+    <!-- SMS & Email -->
+    <div class="panel" id="panelSms">
+      <div class="panel-head">
+        <span class="panel-title" style="color:#ff0">💬 SMS & EMAILY — ČTENÍ</span>
+        <span class="badge badge-yellow">● SKENOVÁNÍ</span>
+      </div>
+      <div class="sms-box">
+        <div id="smsSection">
+          <div class="sms-label">SMS:</div>
+          <div class="sms-content" id="smsContent"></div>
+        </div>
+        <div id="emailSection" style="margin-top:8px;display:none">
+          <div class="sms-label">EMAIL:</div>
+          <div class="sms-content" id="emailContent"></div>
+        </div>
+      </div>
+      <div class="panel-counter" style="color:#aa0">Přečteno: <span id="msgCount">0</span> zpráv</div>
+    </div>
+
+    <!-- Bank -->
+    <div class="panel bank-panel" id="panelBank">
+      <div class="panel-head">
+        <span class="panel-title" style="color:#f44">🏦 BANKOVNÍ ÚČET — PŘEVOD</span>
+        <span class="badge badge-red" style="animation-duration:.5s">⚠ KRITICKÉ</span>
+      </div>
+      <div class="bank-box">
+        <div class="bank-label">Zbývající zůstatek:</div>
+        <div class="bank-amount" id="bankAmount">47 832 Kč</div>
+        <div class="bank-iban">Převod na: CZ65 0800 **** **** **** 4721</div>
+        <div class="bank-bar"><div class="bank-bar-fill" id="bankBar"></div></div>
+      </div>
+    </div>
+
+    <div class="hack-complete" id="hackComplete">✅ EXTRAKCE DOKONČENA — ODESÍLÁNÍ DAT...</div>
+  </div>
+</div>
+
+<!-- ════════════ REVEAL ════════════ -->
+<div class="reveal" id="reveal">
+  <div class="reveal-inner">
+    <div class="reveal-head">
+      <div class="reveal-icon">✅</div>
+      <h1>Klid! Nic se nestalo.</h1>
+      <p>Tohle byla <strong>simulace phishingového útoku</strong>. Žádná data nebyla stažena, žádné peníze převedeny.</p>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num">91 %</div>
+      <div class="stat-desc">všech kyberútoků začíná právě takto — jedním kliknutím.</div>
+    </div>
+    <div class="info-box">
+      <h2>Co se mohlo stát doopravdy?</h2>
+      <div class="info-row"><span class="icon">📇</span><span class="text">Krádež všech kontaktů a jejich prodej spamerům</span></div>
+      <div class="info-row"><span class="icon">💬</span><span class="text">Čtení SMS — včetně ověřovacích kódů z banky</span></div>
+      <div class="info-row"><span class="icon">🏦</span><span class="text">Neoprávněné převody z bankovního účtu</span></div>
+      <div class="info-row"><span class="icon">🎭</span><span class="text">Krádež identity a zneužití tvého jména</span></div>
+    </div>
+    <div class="tips">
+      <h2>🛡️ Jak se chránit?</h2>
+      <div class="tip">
+        <div class="tip-head"><span class="icon">🔗</span><span class="title">Neklikej na podezřelé odkazy</span></div>
+        <p>Vždy zkontroluj URL předtím, než na něco klikneš. Podvodníci používají podobně vypadající adresy.</p>
+      </div>
+      <div class="tip">
+        <div class="tip-head"><span class="icon">🔐</span><span class="title">Používej dvoufaktorové ověření</span></div>
+        <p>I když někdo získá tvé heslo, 2FA ho zastaví. Zapni si ho všude, kde to jde.</p>
+      </div>
+      <div class="tip">
+        <div class="tip-head"><span class="icon">📱</span><span class="title">Kontroluj oprávnění aplikací</span></div>
+        <p>Aplikace nepotřebuje přístup ke kontaktům, SMS ani kameře, pokud to není její hlavní funkce.</p>
+      </div>
+      <div class="tip">
+        <div class="tip-head"><span class="icon">🧠</span><span class="title">Pokud je to moc dobré, je to past</span></div>
+        <p>"Vyhráli jste iPhone", "Podívejte se, kdo sleduje váš profil" — klasické návnady.</p>
+      </div>
+      <div class="tip">
+        <div class="tip-head"><span class="icon">🚨</span><span class="title">Nesdílej citlivé údaje přes chat</span></div>
+        <p>Hesla, PINy, čísla karet — nikdy je neposílej v SMS, emailu ani messengeru.</p>
+      </div>
+    </div>
+    <div class="share-section">
+      <p>Pošli to dál — ať se taky leknou a něco se naučí 😉</p>
+      <button class="share-btn" onclick="shareApp()">📤 Sdílet s přáteli</button>
+      <div class="copied" id="copied">✓ Zkopírováno do schránky!</div>
+      <div class="footer">
+        Monitor — vzdělávací simulace kybernetického útoku<br>
+        Žádná reálná data nebyla shromážděna ani odeslána.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONTACTS = [
+  "Máma ❤️","Táta","Petr Novák","Jana Svobodová","Martin K.",
+  "Lucie Dvořáková","Šéf - Karel","Banka Info","Tomáš Černý",
+  "Eva Marková","David Procházka","Tereza H.","Ondřej Kučera",
+  "Markéta Veselá","Jakub Pokorný","Simona Králová","Filip Němec",
+  "Barbora Žáková","Michal Růžička","Karolína Benešová",
+  "Radek Fiala","Denisa Sedláčková","Pavel Horáček","Monika Šťastná"
+];
+const SMS = [
+  {from:"Máma ❤️",msg:"Nezapomeň na neděli, vaříme svíčkovou..."},
+  {from:"Banka Info",msg:"Potvrzení platby: -2 450 Kč, Alza.cz"},
+  {from:"Martin K.",msg:"Hele viděls ten zápas včera? Šílený..."},
+  {from:"Šéf - Karel",msg:"Zítra porada v 9:00, připrav slajdy"},
+  {from:"Jana Svobodová",msg:"Díky za včerejšek, bylo to super 😊"},
+  {from:"Lucie Dvořáková",msg:"Posílám ti tu adresu: Vinohradská 42"},
+  {from:"Eva Marková",msg:"Heslo k WiFi u nás: MojeHeslo2024!"},
+  {from:"Petr Novák",msg:"Můžeš mi poslat číslo na toho doktora?"}
+];
+const EMAILS = [
+  {from:"paypal@notification.com",subject:"Potvrzení platby €149.99"},
+  {from:"karel.novak@firma.cz",subject:"RE: Mzdový výměr 2025"},
+  {from:"info@csob.cz",subject:"Výpis z účtu - leden 2025"},
+  {from:"hr@company.com",subject:"Vaše osobní hodnocení Q4"}
+];
+
+let intervals = [];
+let timeouts = [];
+
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function fmt(n){return n.toLocaleString("cs-CZ")}
+
+// ── Glitch text ──
+function glitch(el, target){
+  const chars="!@#$%^&*()_+-=[]{}|;:,.<>?/~`01";
+  let i=0;
+  const iv=setInterval(()=>{
+    el.textContent=target.split("").map((c,idx)=>idx<i?c:chars[rnd(0,chars.length-1)]).join("");
+    i++;
+    if(i>target.length)clearInterval(iv);
+  },30);
+  intervals.push(iv);
+}
+
+// ── Terminal typing ──
+function typeLine(text, delay){
+  return new Promise(resolve=>{
+    const t=setTimeout(()=>{
+      const div=document.createElement("div");
+      div.className="term-line";
+      div.innerHTML=`<span class="prompt">➜ </span><span class="typed"></span><span class="cursor">█</span>`;
+      document.getElementById("terminal").appendChild(div);
+      div.classList.add("visible");
+      const typed=div.querySelector(".typed");
+      let i=0;
+      const iv=setInterval(()=>{
+        typed.textContent=text.slice(0,i+1);
+        i++;
+        if(i>=text.length){clearInterval(iv);resolve();}
+      },8);
+      intervals.push(iv);
+    },delay);
+    timeouts.push(t);
+  });
+}
+
+// ── Counters ──
+function countUp(el, target, duration){
+  const start=Date.now();
+  const iv=setInterval(()=>{
+    const p=Math.min((Date.now()-start)/duration,1);
+    el.textContent=fmt(Math.floor(p*target));
+    if(p>=1)clearInterval(iv);
+  },30);
+  intervals.push(iv);
+}
+
+// ── Start hack ──
+function startHack(){
+  document.getElementById("bait").classList.add("hidden");
+  const hack=document.getElementById("hack");
+  hack.classList.add("active");
+
+  // IP
+  document.getElementById("hackIp").textContent=
+    `IP: 185.${rnd(1,254)}.${rnd(1,254)}.${rnd(1,254)} | Zařízení kompromitováno`;
+
+  // Glitch title
+  glitch(document.getElementById("glitchTitle"),"PŘÍSTUP ZÍSKÁN");
+
+  // Terminal lines
+  typeLine("$ sudo access --bypass-auth --device=current",0);
+  typeLine("[OK] Firewall disabled...",300);
+  typeLine("[OK] Root access granted...",600);
+  typeLine("$ dump --contacts --sms --email --banking",900);
+  typeLine("[RUNNING] Extracting personal data...",1200);
+
+  // Step 1: Contacts @ 500ms
+  timeouts.push(setTimeout(()=>{
+    document.getElementById("panelContacts").classList.add("visible");
+    let ci=0;
+    const iv=setInterval(()=>{
+      const list=document.getElementById("contactsList");
+      list.innerHTML="";
+      for(let j=0;j<5;j++){
+        const c=CONTACTS[(ci+j)%CONTACTS.length];
+        const row=document.createElement("div");
+        row.className="contact-row";
+        row.innerHTML=`<span>✓ ${c}</span><span class="contact-num">+420 *** *** ${rnd(100,999)}</span>`;
+        list.appendChild(row);
+      }
+      ci++;
+    },150);
+    intervals.push(iv);
+    countUp(document.getElementById("contactCount"),CONTACTS.length*12,3000);
+  },500));
+
+  // Step 2: SMS @ 4000ms
+  timeouts.push(setTimeout(()=>{
+    document.getElementById("panelSms").classList.add("visible");
+    let si=0;
+    const iv=setInterval(()=>{
+      const s=SMS[si%SMS.length];
+      document.getElementById("smsContent").innerHTML=
+        `<strong>${s.from}:</strong> <span>${s.msg}</span>`;
+      si++;
+    },600);
+    intervals.push(iv);
+    countUp(document.getElementById("msgCount"),847,6000);
+  },4000));
+
+  // Step 3: Bank @ 7000ms
+  timeouts.push(setTimeout(()=>{
+    document.getElementById("panelBank").classList.add("visible");
+    let amount=47832;
+    const iv=setInterval(()=>{
+      amount=Math.max(0,amount-rnd(500,3000));
+      const el=document.getElementById("bankAmount");
+      el.textContent=fmt(amount)+" Kč";
+      el.style.color=amount>10000?"#f44":amount>0?"#f00":"#600";
+      document.getElementById("bankBar").style.width=
+        (100-(amount/47832)*100)+"%";
+      if(amount<=0)clearInterval(iv);
+    },200);
+    intervals.push(iv);
+  },7000));
+
+  // Step 4: Emails @ 10000ms
+  timeouts.push(setTimeout(()=>{
+    document.getElementById("emailSection").style.display="block";
+    let ei=0;
+    const iv=setInterval(()=>{
+      const e=EMAILS[ei%EMAILS.length];
+      document.getElementById("emailContent").innerHTML=
+        `<strong>${e.from}</strong> <span>— ${e.subject}</span>`;
+      ei++;
+    },500);
+    intervals.push(iv);
+  },10000));
+
+  // Step 5: Complete @ 12500ms
+  timeouts.push(setTimeout(()=>{
+    document.getElementById("hackComplete").classList.add("visible");
+  },12500));
+
+  // Reveal @ 14500ms
+  timeouts.push(setTimeout(()=>{
+    intervals.forEach(clearInterval);
+    timeouts.forEach(clearTimeout);
+    hack.classList.remove("active");
+    document.getElementById("reveal").classList.add("active");
+  },14500));
+}
+
+// ── Share ──
+async function shareApp(){
+  const url=window.location.href;
+  const text="Tuhle appku musíš zkusit! 👀 Ukáže ti, jak snadno tě můžou hacknout.";
+  if(navigator.share){
+    try{await navigator.share({title:"Monitor",text,url})}catch(e){}
+  } else {
+    await navigator.clipboard.writeText(text+"\n"+url);
+    const c=document.getElementById("copied");
+    c.classList.add("show");
+    setTimeout(()=>c.classList.remove("show"),2000);
+  }
+}
+</script>
+</body>
+</html>
