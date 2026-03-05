@@ -110,11 +110,6 @@
   .contact-row:not(:first-child){color:#0a0}
   .contact-num{color:#444}
   .panel-counter{font-size:12px;margin-top:8px;text-align:right}
-  .sms-box{background:#000;border-radius:4px;padding:8px}
-  .sms-label{font-size:11px;color:#666;margin-bottom:4px}
-  .sms-content{font-size:13px;color:#ff0}
-  .sms-content strong{color:#ff0}
-  .sms-content span{color:#cc0}
   .bank-panel{
     background:rgba(40,0,0,.6);border-color:rgba(255,0,0,.2);
   }
@@ -248,25 +243,6 @@
       <div class="panel-counter" style="color:#0a0">Staženo: <span id="contactCount">0</span> kontaktů</div>
     </div>
 
-    <!-- SMS & Email -->
-    <div class="panel" id="panelSms">
-      <div class="panel-head">
-        <span class="panel-title" style="color:#ff0">💬 SMS & EMAILY — ČTENÍ</span>
-        <span class="badge badge-yellow">● SKENOVÁNÍ</span>
-      </div>
-      <div class="sms-box">
-        <div id="smsSection">
-          <div class="sms-label">SMS:</div>
-          <div class="sms-content" id="smsContent"></div>
-        </div>
-        <div id="emailSection" style="margin-top:8px;display:none">
-          <div class="sms-label">EMAIL:</div>
-          <div class="sms-content" id="emailContent"></div>
-        </div>
-      </div>
-      <div class="panel-counter" style="color:#aa0">Přečteno: <span id="msgCount">0</span> zpráv</div>
-    </div>
-
     <!-- Bank -->
     <div class="panel bank-panel" id="panelBank">
       <div class="panel-head">
@@ -300,7 +276,6 @@
     <div class="info-box">
       <h2>Co se mohlo stát doopravdy?</h2>
       <div class="info-row"><span class="icon">📇</span><span class="text">Krádež všech kontaktů a jejich prodej spamerům</span></div>
-      <div class="info-row"><span class="icon">💬</span><span class="text">Čtení SMS — včetně ověřovacích kódů z banky</span></div>
       <div class="info-row"><span class="icon">🏦</span><span class="text">Neoprávněné převody z bankovního účtu</span></div>
       <div class="info-row"><span class="icon">🎭</span><span class="text">Krádež identity a zneužití tvého jména</span></div>
     </div>
@@ -347,22 +322,6 @@ const CONTACTS = [
   "Markéta Veselá","Jakub Pokorný","Simona Králová","Filip Němec",
   "Barbora Žáková","Michal Růžička","Karolína Benešová",
   "Radek Fiala","Denisa Sedláčková","Pavel Horáček","Monika Šťastná"
-];
-const SMS = [
-  {from:"Máma ❤️",msg:"Nezapomeň na neděli, vaříme svíčkovou..."},
-  {from:"Banka Info",msg:"Potvrzení platby: -2 450 Kč, Alza.cz"},
-  {from:"Martin K.",msg:"Hele viděls ten zápas včera? Šílený..."},
-  {from:"Šéf - Karel",msg:"Zítra porada v 9:00, připrav slajdy"},
-  {from:"Jana Svobodová",msg:"Díky za včerejšek, bylo to super 😊"},
-  {from:"Lucie Dvořáková",msg:"Posílám ti tu adresu: Vinohradská 42"},
-  {from:"Eva Marková",msg:"Heslo k WiFi u nás: MojeHeslo2024!"},
-  {from:"Petr Novák",msg:"Můžeš mi poslat číslo na toho doktora?"}
-];
-const EMAILS = [
-  {from:"paypal@notification.com",subject:"Potvrzení platby €149.99"},
-  {from:"karel.novak@firma.cz",subject:"RE: Mzdový výměr 2025"},
-  {from:"info@csob.cz",subject:"Výpis z účtu - leden 2025"},
-  {from:"hr@company.com",subject:"Vaše osobní hodnocení Q4"}
 ];
 
 let intervals = [];
@@ -436,7 +395,7 @@ function startHack(){
   typeLine("$ dump --contacts --sms --email --banking",900);
   typeLine("[RUNNING] Extracting personal data...",1200);
 
-  // Step 1: Contacts @ 500ms
+  // Step 1: Contacts @ 500ms (fast)
   timeouts.push(setTimeout(()=>{
     document.getElementById("panelContacts").classList.add("visible");
     let ci=0;
@@ -451,26 +410,12 @@ function startHack(){
         list.appendChild(row);
       }
       ci++;
-    },150);
+    },60);
     intervals.push(iv);
-    countUp(document.getElementById("contactCount"),CONTACTS.length*12,3000);
+    countUp(document.getElementById("contactCount"),CONTACTS.length*12,1500);
   },500));
 
-  // Step 2: SMS @ 4000ms
-  timeouts.push(setTimeout(()=>{
-    document.getElementById("panelSms").classList.add("visible");
-    let si=0;
-    const iv=setInterval(()=>{
-      const s=SMS[si%SMS.length];
-      document.getElementById("smsContent").innerHTML=
-        `<strong>${s.from}:</strong> <span>${s.msg}</span>`;
-      si++;
-    },600);
-    intervals.push(iv);
-    countUp(document.getElementById("msgCount"),847,6000);
-  },4000));
-
-  // Step 3: Bank @ 7000ms
+  // Step 2: Bank @ 3500ms
   timeouts.push(setTimeout(()=>{
     document.getElementById("panelBank").classList.add("visible");
     let amount=47832;
@@ -484,33 +429,20 @@ function startHack(){
       if(amount<=0)clearInterval(iv);
     },200);
     intervals.push(iv);
-  },7000));
+  },3500));
 
-  // Step 4: Emails @ 10000ms
-  timeouts.push(setTimeout(()=>{
-    document.getElementById("emailSection").style.display="block";
-    let ei=0;
-    const iv=setInterval(()=>{
-      const e=EMAILS[ei%EMAILS.length];
-      document.getElementById("emailContent").innerHTML=
-        `<strong>${e.from}</strong> <span>— ${e.subject}</span>`;
-      ei++;
-    },500);
-    intervals.push(iv);
-  },10000));
-
-  // Step 5: Complete @ 12500ms
+  // Step 3: Complete @ 8000ms
   timeouts.push(setTimeout(()=>{
     document.getElementById("hackComplete").classList.add("visible");
-  },12500));
+  },8000));
 
-  // Reveal @ 14500ms
+  // Reveal @ 10000ms
   timeouts.push(setTimeout(()=>{
     intervals.forEach(clearInterval);
     timeouts.forEach(clearTimeout);
     hack.classList.remove("active");
     document.getElementById("reveal").classList.add("active");
-  },14500));
+  },10000));
 }
 
 // ── Share ──
